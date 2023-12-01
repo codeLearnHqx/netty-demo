@@ -4,16 +4,20 @@ import com.hqx.message.Message;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageCodec;
+import lombok.extern.slf4j.Slf4j;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.List;
 
 /**
- * @Description 自定义的编解码器
+ * @Description 消息自定义的编解码器
  * @Create by hqx
  * @Date 2023/12/1 19:18
  */
+@Slf4j
 public class MessageCodec extends ByteToMessageCodec<Message> {
 
     /**
@@ -56,6 +60,29 @@ public class MessageCodec extends ByteToMessageCodec<Message> {
         // 获取版本
         byte version = in.readByte();
         // 获取序列化方式
+        byte serializerType = in.readByte();
+        // 获取消息类型
+        byte messageType = in.readByte();
+        // 获取消息序号
+        int sequenceId = in.readInt();
+        // 无用字节，不接收
+        in.readByte();
+        // 内容长度字节
+        int length = in.readInt();
+        // 获取内容字节
+        byte[] bytes = new byte[length];
+        in.readBytes(bytes, 0, length);
+
+        // 使用jdk反序列化
+        ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes));
+        // 获取到内容对象
+        Message msg = (Message) ois.readObject();
+
+        log.debug("{} {} {} {} {} {}", magicNum, version, serializerType, messageType, sequenceId, length);
+        log.debug("{}", msg);
+
+        // netty 约定解码出来的结果需要存到 out 里面，否则 handler 中拿不到数据
+        out.add(msg);
 
     }
 }
