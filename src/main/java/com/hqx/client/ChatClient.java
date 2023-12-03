@@ -14,7 +14,6 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Scanner;
@@ -55,9 +54,9 @@ public class ChatClient {
                             new Thread(() -> {
                                 Scanner scanner = new Scanner(System.in);
                                 System.out.print("请输入用户名：");
-                                String username = scanner.next();
+                                String username = scanner.nextLine();
                                 System.out.print("请输入密码：");
-                                String password = scanner.next();
+                                String password = scanner.nextLine();
                                 // 构造消息对象
                                 LoginRequestMessage message = new LoginRequestMessage(username, password);
                                 // 发送消息
@@ -77,13 +76,13 @@ public class ChatClient {
                                 }
                                 while (true) {
                                     System.out.println("=========================================");
-                                    System.out.println("send [username] [content]");
-                                    System.out.println("gsend [group name] [content]");
-                                    System.out.println("gcreate [group name] [m1,m2,m3...]");
-                                    System.out.println("gmembers [group name]");
-                                    System.out.println("gjoin [group name]");
-                                    System.out.println("gquit [group name]");
-                                    System.out.println("quit");
+                                    System.out.println("send [username] [content]"); // 单聊
+                                    System.out.println("gsend [group name] [content]"); // 群聊
+                                    System.out.println("gcreate [group name] [m1,m2,m3...]"); // 创建群聊
+                                    System.out.println("gmembers [group name]"); // 查看群成员
+                                    System.out.println("gjoin [group name]"); // 加入群
+                                    System.out.println("gquit [group name]"); // 退群
+                                    System.out.println("quit"); // 关闭客户端
                                     System.out.println("=========================================");
                                     String command = scanner.nextLine();
                                     String[] s = command.split(" ");
@@ -97,6 +96,7 @@ public class ChatClient {
                                         case "gcreate":
                                             // 聊天组的成员
                                             HashSet<String> set = new HashSet<>(Arrays.asList(s[2].split(",")));
+                                            set.add(username); // 加入自己
                                             ctx.writeAndFlush(new GroupCreateRequestMessage(s[1],set));
                                             break;
                                         case "gmembers":

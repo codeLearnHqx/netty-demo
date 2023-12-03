@@ -2,8 +2,7 @@ package com.hqx.server;
 
 import com.hqx.protocol.MessageCodecSharable;
 import com.hqx.protocol.ProtocolFrameDecoder;
-import com.hqx.server.handler.ChatRequestMessageHandler;
-import com.hqx.server.handler.LoginRequestMessageHandler;
+import com.hqx.server.handler.*;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -26,9 +25,15 @@ public class ChatServer {
         NioEventLoopGroup worker = new NioEventLoopGroup();
         // handler
         LoggingHandler LOGGING_HANDLER = new LoggingHandler(LogLevel.DEBUG);
-        MessageCodecSharable MESSAGE_CODEC = new MessageCodecSharable();
-        LoginRequestMessageHandler LOGIN_REQUEST_MESSAGE_HANDLER = new LoginRequestMessageHandler();
-        ChatRequestMessageHandler CHAT_REQUEST_MESSAGE_HANDLER = new ChatRequestMessageHandler();
+        MessageCodecSharable MESSAGE_CODEC_HANDLER = new MessageCodecSharable();
+        LoginRequestMessageHandler LOGIN_REQUEST_HANDLER = new LoginRequestMessageHandler();
+        ChatRequestMessageHandler CHAT_MESSAGE_HANDLER = new ChatRequestMessageHandler();
+        GroupCreateRequestMessageHandler GROUP_CREATE_HANDLER = new GroupCreateRequestMessageHandler();
+        GroupChatRequestMessageHandler GROUP_CHAT_HANDLER = new GroupChatRequestMessageHandler();
+        GroupJoinRequestMessageHandler GROUP_JOIN_HANDLER = new GroupJoinRequestMessageHandler();
+        GroupMembersRequestMessageHandler GROUP_MEMBERS_HANDLER = new GroupMembersRequestMessageHandler();
+        GroupQuitRequestMessageHandler GROUP_QUIT_HANDLER = new GroupQuitRequestMessageHandler();
+
         try {
             ServerBootstrap serverBootstrap = new ServerBootstrap();
             serverBootstrap.group(boss, worker);
@@ -41,11 +46,17 @@ public class ChatServer {
                     // 日志处理器
                     ch.pipeline().addLast(LOGGING_HANDLER);
                     // 自定义的消息编解码器
-                    ch.pipeline().addLast(MESSAGE_CODEC);
+                    ch.pipeline().addLast(MESSAGE_CODEC_HANDLER);
                     // 自定义的登录处理器
-                    ch.pipeline().addLast(LOGIN_REQUEST_MESSAGE_HANDLER);
-                    // 自定义的聊天消息处理器
-                    ch.pipeline().addLast(CHAT_REQUEST_MESSAGE_HANDLER);
+                    ch.pipeline().addLast(LOGIN_REQUEST_HANDLER);
+                    // 自定义的单人聊天消息处理器
+                    ch.pipeline().addLast(CHAT_MESSAGE_HANDLER);
+                    // 自定义的群创建请求处理器
+                    ch.pipeline().addLast(GROUP_CREATE_HANDLER);
+                    ch.pipeline().addLast(GROUP_CHAT_HANDLER);
+                    ch.pipeline().addLast(GROUP_JOIN_HANDLER);
+                    ch.pipeline().addLast(GROUP_MEMBERS_HANDLER);
+                    ch.pipeline().addLast(GROUP_QUIT_HANDLER);
 
                 }
             });

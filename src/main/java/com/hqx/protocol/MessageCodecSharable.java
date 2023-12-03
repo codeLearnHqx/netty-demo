@@ -78,8 +78,8 @@ public class MessageCodecSharable extends MessageToMessageCodec<ByteBuf, Message
         // 获取到内容对象
         Message msg = (Message) ois.readObject();
 
-        log.debug("{} {} {} {} {} {}", magicNum, version, serializerType, messageType, sequenceId, length);
-        log.debug("{}", msg);
+        //log.debug("{} {} {} {} {} {}", magicNum, version, serializerType, messageType, sequenceId, length);
+        //log.debug("{}", msg);
 
         // netty 约定解码出来的结果需要存到 out 里面，否则 handler 中拿不到数据
         out.add(msg);
