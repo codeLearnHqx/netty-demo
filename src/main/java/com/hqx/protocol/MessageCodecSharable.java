@@ -2,8 +2,9 @@ package com.hqx.protocol;
 
 import com.hqx.message.Message;
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.ByteToMessageCodec;
+import io.netty.handler.codec.MessageToMessageCodec;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.ByteArrayInputStream;
@@ -14,19 +15,17 @@ import java.util.List;
 
 /**
  * @Description
- *  消息自定义的编解码器 （多个channel间不可共享，所以需要多个实例），无法添加 @ChannelHandler.Sharable，
- *  父类构造器会检查@ChannelHandler.Sharable是否存在
+ *  消息自定义的编解码器 （多个channel间可共享，所以只需要1个实例），必须保证接收ByteBuf是完整的，
+ *  即必须配合 LengthFieldBasedFrameDecoder 帧解码器一起使用
  * @Create by hqx
- * @Date 2023/12/1 19:18
+ * @Date 2023/12/3 13:27
  */
 @Slf4j
-public class MessageCodec extends ByteToMessageCodec<Message> {
-
-    /**
-     * 编码器
-     */
+@ChannelHandler.Sharable
+public class MessageCodecSharable extends MessageToMessageCodec<ByteBuf, Message> {
     @Override
-    protected void encode(ChannelHandlerContext ctx, Message msg, ByteBuf out) throws Exception {
+    protected void encode(ChannelHandlerContext ctx, Message msg, List<Object> outList) throws Exception {
+        ByteBuf out = ctx.alloc().buffer();
         // 除去内容的字节数之外，协议固定写入的字节数为15字节，所以需要填充1无用个字节来使总数为2的整数倍
         // 1. 4字节的魔数
         out.writeBytes(new byte[]{1,2,3,4});
@@ -50,11 +49,9 @@ public class MessageCodec extends ByteToMessageCodec<Message> {
         // 8. 写入内容
         out.writeBytes(bytes);
 
+        outList.add(out);
     }
 
-    /**
-     * 解码器
-     */
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
         // 读取4字节（此缓冲区中将readerIndex增加4），魔数
@@ -85,6 +82,5 @@ public class MessageCodec extends ByteToMessageCodec<Message> {
 
         // netty 约定解码出来的结果需要存到 out 里面，否则 handler 中拿不到数据
         out.add(msg);
-
     }
 }

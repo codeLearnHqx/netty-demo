@@ -1,7 +1,6 @@
 package com.hqx.protocol;
 
 import com.hqx.message.LoginRequestMessage;
-import com.hqx.protocol.MessageCodec;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.embedded.EmbeddedChannel;
