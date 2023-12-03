@@ -49,6 +49,7 @@ public class MessageCodecSharable extends MessageToMessageCodec<ByteBuf, Message
         // 8. 写入内容
         out.writeBytes(bytes);
 
+        // 填入消息集合，用于发送
         outList.add(out);
     }
 

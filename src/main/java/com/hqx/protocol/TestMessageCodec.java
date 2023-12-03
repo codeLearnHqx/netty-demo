@@ -23,7 +23,7 @@ public class TestMessageCodec {
 
 
         // 1. 模拟消息出站 encode
-        LoginRequestMessage message = new LoginRequestMessage("zhangsan", "123", "张三");
+        LoginRequestMessage message = new LoginRequestMessage("zhangsan", "123");
         //channel.writeOutbound(message);
 
         // 获取数据编码后的 ByteBuf
