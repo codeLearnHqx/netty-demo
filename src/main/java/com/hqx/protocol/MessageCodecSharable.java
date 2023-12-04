@@ -1,5 +1,6 @@
 package com.hqx.protocol;
 
+import com.hqx.config.Config;
 import com.hqx.message.Message;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
@@ -32,7 +33,10 @@ public class MessageCodecSharable extends MessageToMessageCodec<ByteBuf, Message
         // 2. 1字节的版本
         out.writeByte(1);
         // 3. 1字节的序列化方式 jdk 0, json 1
-        out.writeByte(0);
+        /*
+            枚举对象可以通过ordinal()将枚举值转换成整数，按照枚举类中的枚举值顺序进行转换
+         */
+        out.writeByte(Config.getSerializerAlgorithm().ordinal());
         // 4. 1字节的消息类型
         out.writeByte(msg.getMessageType());
         // 5. 4字节的请求序号
@@ -40,10 +44,7 @@ public class MessageCodecSharable extends MessageToMessageCodec<ByteBuf, Message
         // 大小为1的无用字节，用于对齐填充
         out.writeByte(0xff);
         // 6. 获取内容的字节数组
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        ObjectOutputStream oos = new ObjectOutputStream(bos); // 将对象流写入 byte数组 流
-        oos.writeObject(msg); // 将对象写入对象流
-        byte[] bytes = bos.toByteArray(); // 获取内容字节数组
+        byte[] bytes = Config.getSerializerAlgorithm().serialize(msg);
         // 7. 4字节，设置内容长度
         out.writeInt(bytes.length);
         // 8. 写入内容
@@ -59,8 +60,8 @@ public class MessageCodecSharable extends MessageToMessageCodec<ByteBuf, Message
         int magicNum = in.readInt();
         // 获取版本
         byte version = in.readByte();
-        // 获取序列化方式
-        byte serializerType = in.readByte();
+        // 获取序列化方式  0 或者 1
+        byte serializerAlgorithm = in.readByte();
         // 获取消息类型
         byte messageType = in.readByte();
         // 获取消息序号
@@ -73,10 +74,12 @@ public class MessageCodecSharable extends MessageToMessageCodec<ByteBuf, Message
         byte[] bytes = new byte[length];
         in.readBytes(bytes, 0, length);
 
-        // 使用jdk反序列化
-        ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes));
-        // 获取到内容对象
-        Message msg = (Message) ois.readObject();
+        // 使用jdk反序列化，获取到内容对象    获取所有的枚举值数据组，然后根据协议中的序列化类型来进行反序列化
+        // 找到指定的反序列算法
+        Serializer.Algorithm algorithm = Serializer.Algorithm.values()[serializerAlgorithm];
+        // 确定具体消息类型
+        Class<?> messageClass = Message.getMessageClass(messageType);
+        Object msg = algorithm.deserialize(messageClass, bytes);
 
         //log.debug("{} {} {} {} {} {}", magicNum, version, serializerType, messageType, sequenceId, length);
         //log.debug("{}", msg);
