@@ -33,6 +33,7 @@ public class ChatServer {
         GroupJoinRequestMessageHandler GROUP_JOIN_HANDLER = new GroupJoinRequestMessageHandler();
         GroupMembersRequestMessageHandler GROUP_MEMBERS_HANDLER = new GroupMembersRequestMessageHandler();
         GroupQuitRequestMessageHandler GROUP_QUIT_HANDLER = new GroupQuitRequestMessageHandler();
+        QuitHandler QUIT_HANDLER = new QuitHandler();
 
         try {
             ServerBootstrap serverBootstrap = new ServerBootstrap();
@@ -53,10 +54,14 @@ public class ChatServer {
                     ch.pipeline().addLast(CHAT_MESSAGE_HANDLER);
                     // 自定义的群创建请求处理器
                     ch.pipeline().addLast(GROUP_CREATE_HANDLER);
+                    // 自定义的群聊处理器
                     ch.pipeline().addLast(GROUP_CHAT_HANDLER);
+
                     ch.pipeline().addLast(GROUP_JOIN_HANDLER);
                     ch.pipeline().addLast(GROUP_MEMBERS_HANDLER);
                     ch.pipeline().addLast(GROUP_QUIT_HANDLER);
+                    // 自定义的客户端关闭处理器
+                    ch.pipeline().addLast(QUIT_HANDLER);
 
                 }
             });
