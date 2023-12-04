@@ -4,13 +4,15 @@ import com.hqx.protocol.MessageCodecSharable;
 import com.hqx.protocol.ProtocolFrameDecoder;
 import com.hqx.server.handler.*;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelInitializer;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.timeout.IdleState;
+import io.netty.handler.timeout.IdleStateEvent;
+import io.netty.handler.timeout.IdleStateHandler;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -48,6 +50,22 @@ public class ChatServer {
                     ch.pipeline().addLast(LOGGING_HANDLER);
                     // 自定义的消息编解码器
                     ch.pipeline().addLast(MESSAGE_CODEC_HANDLER);
+                    // 读写空闲状态处理器
+                    // 5s 内如果没有收到 channel 的数据，会触发一个 IdleState.READER_IDLE（IdleStateEvent） 事件
+                    ch.pipeline().addLast(new IdleStateHandler(5, 0 ,0));
+                    // 同时作为入站、出站处理器
+                    ch.pipeline().addLast(new ChannelDuplexHandler() {
+                        // 用来触发特殊事件
+                        @Override
+                        public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+                            IdleStateEvent idleStateEvent =  ( IdleStateEvent ) evt;
+                            // 触发读空闲事件
+                            if (idleStateEvent.state().equals(IdleState.READER_IDLE)) {
+                                log.debug("已经超过5s没有读到数据了");
+                                ctx.channel().close();
+                            }
+                        }
+                    });
                     // 自定义的登录处理器
                     ch.pipeline().addLast(LOGIN_REQUEST_HANDLER);
                     // 自定义的单人聊天消息处理器

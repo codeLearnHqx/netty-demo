@@ -4,14 +4,14 @@ import com.hqx.message.*;
 import com.hqx.protocol.MessageCodecSharable;
 import com.hqx.protocol.ProtocolFrameDecoder;
 import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.channel.ChannelInitializer;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.timeout.IdleState;
+import io.netty.handler.timeout.IdleStateEvent;
+import io.netty.handler.timeout.IdleStateHandler;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Arrays;
@@ -46,7 +46,36 @@ public class ChatClient {
                     ch.pipeline().addLast(new ProtocolFrameDecoder());
                     //ch.pipeline().addLast(LOGGING_HANDLER);
                     ch.pipeline().addLast(MESSAGE_CODEC); // 出站、入站都会经过这个handler
+                    // 读写空闲状态处理器
+                    // 3s 内如果没有向 channel 的写入数据，就触发一个 IdleState.WRITER_IDLE（IdleStateEvent） 事件
+                    ch.pipeline().addLast(new IdleStateHandler(0, 3 ,0));
+                    // 同时作为入站、出站处理器
+                    ch.pipeline().addLast(new ChannelDuplexHandler() {
+                        // 用来触发特殊事件
+                        @Override
+                        public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+                            IdleStateEvent idleStateEvent =  ( IdleStateEvent ) evt;
+                            // 触发写空闲事件
+                            if (idleStateEvent.state().equals(IdleState.WRITER_IDLE)) {
+                                log.debug("已经超过3s没有写数据了，发送一个心跳包");
+                                ctx.writeAndFlush(new PingMessage());
+                            }
+                        }
+                    });
                     ch.pipeline().addLast("client handler", new ChannelInboundHandlerAdapter(){
+                        // channel触发的 read 事件，处理服务端返回的数据
+                        @Override
+                        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                            log.debug("msg: {}", msg);
+                            if (msg instanceof LoginResponseMessage) {
+                                LoginResponseMessage response = (LoginResponseMessage) msg;
+                                if (response.isSuccess()) { // 登录成功
+                                    LOGIN.set(true);
+                                }
+                            }
+                            // 唤醒 system in 线程
+                            WAIT_FOR_LOGIN.countDown(); // 计数减1
+                        }
                         // 连接建立后触发 active 事件
                         @Override
                         public void channelActive(ChannelHandlerContext ctx) throws Exception {
@@ -117,19 +146,17 @@ public class ChatClient {
 
                             }, "system in").start();
                         }
-                        // channel触发的 read 事件，处理服务端返回的数据
-                        @Override
-                        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-                            log.debug("msg: {}", msg);
-                            if (msg instanceof LoginResponseMessage) {
-                                LoginResponseMessage response = (LoginResponseMessage) msg;
-                                if (response.isSuccess()) { // 登录成功
-                                    LOGIN.set(true);
-                                }
-                            }
-                            // 唤醒 system in 线程
-                            WAIT_FOR_LOGIN.countDown(); // 计数减1
 
+                        // 连接断开时触发 inactive 事件（客户端强制中断不会触发）
+                        @Override
+                        public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+                            log.debug("连接已经断开...");
+                        }
+
+                        // 在出现异常时触发（客户端强制中断不会触发）
+                        @Override
+                        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+                            log.debug("出现异常");
                         }
                     });
                 }
