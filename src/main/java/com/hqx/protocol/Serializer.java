@@ -2,6 +2,7 @@ package com.hqx.protocol;
 
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -51,14 +52,16 @@ public interface Serializer {
         Json {
             @Override
             public <T> T deserialize(Class<T> clazz, byte[] bytes) {
+                Gson gson = new GsonBuilder().registerTypeAdapter(Class.class, new ClassCodec()).create();
                 String json = new String(bytes, StandardCharsets.UTF_8);
-                return new Gson().fromJson(json, clazz);
+                return gson.fromJson(json, clazz);
             }
 
             @Override
             public <T> byte[] serialize(T object) {
-                // 使用 Gson 工具类
-                String json = new Gson().toJson(object);
+                // 使用 Gson 工具类，并为 class 类型数据注册自定义的 序列化、反序列化器
+                Gson gson = new GsonBuilder().registerTypeAdapter(Class.class, new ClassCodec()).create();
+                String json = gson.toJson(object);
                 return json.getBytes(StandardCharsets.UTF_8);
             }
         }
